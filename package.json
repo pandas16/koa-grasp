@@ -1,0 +1,27 @@
+{
+  "name": "grasp",
+  "version": "1.0.0",
+  "description": "测试koa爬虫",
+  "main": "index.js",
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.3",
+    "koa-router": "^7.4.0",
+    "koa2": "^2.0.0-alpha.7",
+    "superagent": "^1.4.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pandas16/koa-grasp.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/pandas16/koa-grasp/issues"
+  },
+  "homepage": "https://github.com/pandas16/koa-grasp#readme"
+}
