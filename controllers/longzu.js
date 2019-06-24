@@ -48,7 +48,7 @@ exports.fetchCatalog = async (ctx,next) => {
     let superagentRes = null,urls = [];
     let fileName = `龙族_100.txt`;
     try {
-        superagentRes = await superagent.post(`http://longzu5.co`);
+        superagentRes = await superagent.get(`http://longzu5.co`);
         let html = superagentRes&&superagentRes.text;
         let $ = cheerio.load(html, {decodeEntities: false}); //用cheerio解析页面数据
     
@@ -66,11 +66,16 @@ exports.fetchCatalog = async (ctx,next) => {
         }
     }
     console.log('===获取数组完成===',urls);
+    if (urls&&urls.length < 1) {
+        ctx.body = {
+            errInfo1: '抓取章节失败！',
+        }
+    }
     for (let index = 0; index < urls.length; index++) {
         try {
             console.log(`===开始抓取${urls[index]}===`);
             let resStr = await this.fetchChapter(`${urls[index]}`);
-            console.log('===resStr===',resStr);
+            // console.log('===resStr===',resStr);
             if (resStr&&resStr.length>0) {
                 this.textLocalTxt(resStr,fileName);         
             }else {
@@ -89,36 +94,56 @@ exports.fetchCatalog = async (ctx,next) => {
 /** 抓取每一章 */
 exports.fetchChapter = async (urlNumber) => {
     return new Promise(async (resolve, reject) => {
-        try {
-            let url = `http://longzu5.co${urlNumber}`;
-            console.log('===url===',url);
-            const res = await superagent.post(`${url}`);
-            let html = res&&res.text,
-                $ = cheerio.load(html, {
-                    decodeEntities: false
-                }), //用cheerio解析页面数据
-                obj = {};
-            let arr = [];
-            let str = '';
-            
-            let header = $('h2').text();
-            obj.header = header;
-            str += (header + '\r\n\n');
-    
-            //类似于jquery的操作
-            $('div:nth-of-type(1) > p:nth-of-type(n+2)').each((index, element) => {
-                var $text = $(element).text();
-                arr.push($text);
-                if ($text == '坑边闲话：' || $text == '（坑边闲话：') {
-                    return false;
-                }
-                str += ($text + '\r\n\n');
-            });
-            console.log('===str===',str);
-            resolve&&resolve(str);
-        } catch (err) {
-            reject&&reject(err);
-        }
+        // try {
+        //     let url = `http://longzu5.co${urlNumber}`;
+        //     console.log('===url===',url);
+        //     const res = await superagent.post(`${url}`);
+        //     let html = res&&res.text;
+        //     let $ = await cheerio.load(html, {decodeEntities: false}); //用cheerio解析页面数据
+        //     let str = '';
+        //     let header = $('h2').text();
+        //     console.log(res);
+        //     str += (header + '\r\n\n');
+        //     $('div:nth-of-type(1) > p:nth-of-type(n+2)').each((index, element) => {
+        //         var $text = $(element).text();
+        //         if ($text == '坑边闲话：' || $text == '（坑边闲话：') {
+        //             return false;
+        //         }
+        //         str += ($text + '\r\n\n');
+        //     });
+        //     // console.log('===str===',str);
+        //     resolve&&resolve(str);
+        // } catch (err) {
+        //     reject&&reject(err);
+        // }
+
+        let url = `http://longzu5.co${urlNumber}`;
+        console.log('===url===',url);
+        superagent
+        .get(`${url}`)
+        .end(async (err, res)  => {
+            // console.log('===res===',res);
+            if (err) {
+                reject&&reject(err);
+            } else {
+                let html = res&&res.text;
+                let $ = cheerio.load(html, {decodeEntities: false}); //用cheerio解析页面数据
+                let str = '';
+                let header = $('h2').text();
+                str += (header + '\r\n\n');
+                $('div:nth-of-type(1) > p:nth-of-type(n+2)').each((index, element) => {
+                    let $text = $(element).text();
+                    // if ($text == '坑边闲话：' || $text == '（坑边闲话：') {
+                    if ($text.search('坑边闲话：') != -1 || $text.search('PS：打开支付宝') != -1) {
+                        return false;
+                    }
+                    if ($text.trim() && $text.trim().length > 0) { //不需要空行
+                        str += ($text + '\r\n\n');
+                    }
+                });
+                resolve&&resolve(str);
+            }
+        })
     });
 }
 
