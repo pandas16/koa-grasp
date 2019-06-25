@@ -5,7 +5,7 @@
 
 const cheerio = require('cheerio');
 const superagent = require('superagent');
-const fs = require('fs');
+const utils = require('../utils/utils');
 
 exports.fetchNovel = async (ctx,next) => {
     const query = ctx.request.query;
@@ -19,7 +19,7 @@ exports.fetchNovel = async (ctx,next) => {
         size = end - start;
     }
     // let fileName = `龙族_${start}_${size}_${step}.txt`;
-    let fileName = `龙族_100.txt`;
+    let fileName = `龙族_xxx.txt`;
     let array = [...Array(parseInt(size)).fill(0)];
 
     for (let index = 0; index < array.length; index++) {
@@ -30,10 +30,14 @@ exports.fetchNovel = async (ctx,next) => {
         }
         try {
             console.log(`===开始抓取===第${ array[index] }页`);
-            // setTimeout(async () => {
-                let resStr = await this.fetchChapter(`/post/${array[index]}.html`);
-                this.textLocalTxt(resStr,fileName);   
-            // }, 5000);
+            let resStr = await this.fetchChapter(`/post/${array[index]}.html`);
+            if (resStr&&resStr.length>0) {
+                await utils.writeFile(fileName,resStr);
+            }else {
+                ctx.body = {
+                    errInfo2: `${url}抓取失败`,
+                }
+            }
         } catch (error) {
             ctx.body = {
                 errInfo: error,
@@ -44,15 +48,15 @@ exports.fetchNovel = async (ctx,next) => {
 
 exports.fetchCatalog = async (ctx,next) => {
     const query = ctx.request.query;
-    let start = query&&query.start || '第100章 但为君故(4)';
+    let start = query&&query.start; // || '第170章 但为君故(74)';
     let superagentRes = null,urls = [];
-    let fileName = `龙族_100.txt`;
+    let fileName = `龙族_170.txt`;
     try {
         superagentRes = await superagent.get(`http://longzu5.co`);
         let html = superagentRes&&superagentRes.text;
-        let $ = cheerio.load(html, {decodeEntities: false}); //用cheerio解析页面数据
+        let $ = await cheerio.load(html, {decodeEntities: false}); //用cheerio解析页面数据
     
-        $('.booklist li:nth-of-type(n+2) a').each((index, element) => {
+        $('.booklist a').each((index, element) => {
             let $text = $(element).text();
             let $url = $(element).attr('href');
             urls.unshift($url);
@@ -60,24 +64,25 @@ exports.fetchCatalog = async (ctx,next) => {
                 return false;
             }
         });
+
+        console.log('获取数组完成:',urls,'数组长度:',urls.length);
+        if (urls&&urls.length < 1) {
+            ctx.body = {
+                errInfo1: '抓取章节失败！',
+            }
+        }
     } catch (error) {
         ctx.body = {
             errInfo1: error,
         }
     }
-    console.log('===获取数组完成===',urls);
-    if (urls&&urls.length < 1) {
-        ctx.body = {
-            errInfo1: '抓取章节失败！',
-        }
-    }
+
     for (let index = 0; index < urls.length; index++) {
         try {
             console.log(`===开始抓取${urls[index]}===`);
             let resStr = await this.fetchChapter(`${urls[index]}`);
-            // console.log('===resStr===',resStr);
             if (resStr&&resStr.length>0) {
-                this.textLocalTxt(resStr,fileName);         
+                await utils.writeFile(fileName,resStr);
             }else {
                 ctx.body = {
                     errInfo2: `${url}抓取失败`,
@@ -94,66 +99,28 @@ exports.fetchCatalog = async (ctx,next) => {
 /** 抓取每一章 */
 exports.fetchChapter = async (urlNumber) => {
     return new Promise(async (resolve, reject) => {
-        // try {
-        //     let url = `http://longzu5.co${urlNumber}`;
-        //     console.log('===url===',url);
-        //     const res = await superagent.post(`${url}`);
-        //     let html = res&&res.text;
-        //     let $ = await cheerio.load(html, {decodeEntities: false}); //用cheerio解析页面数据
-        //     let str = '';
-        //     let header = $('h2').text();
-        //     console.log(res);
-        //     str += (header + '\r\n\n');
-        //     $('div:nth-of-type(1) > p:nth-of-type(n+2)').each((index, element) => {
-        //         var $text = $(element).text();
-        //         if ($text == '坑边闲话：' || $text == '（坑边闲话：') {
-        //             return false;
-        //         }
-        //         str += ($text + '\r\n\n');
-        //     });
-        //     // console.log('===str===',str);
-        //     resolve&&resolve(str);
-        // } catch (err) {
-        //     reject&&reject(err);
-        // }
-
-        let url = `http://longzu5.co${urlNumber}`;
-        console.log('===url===',url);
-        superagent
-        .get(`${url}`)
-        .end(async (err, res)  => {
-            // console.log('===res===',res);
-            if (err) {
-                reject&&reject(err);
-            } else {
-                let html = res&&res.text;
-                let $ = cheerio.load(html, {decodeEntities: false}); //用cheerio解析页面数据
-                let str = '';
-                let header = $('h2').text();
-                str += (header + '\r\n\n');
-                $('div:nth-of-type(1) > p:nth-of-type(n+2)').each((index, element) => {
-                    let $text = $(element).text();
-                    // if ($text == '坑边闲话：' || $text == '（坑边闲话：') {
-                    if ($text.search('坑边闲话：') != -1 || $text.search('PS：打开支付宝') != -1) {
-                        return false;
-                    }
-                    if ($text.trim() && $text.trim().length > 0) { //不需要空行
-                        str += ($text + '\r\n\n');
-                    }
-                });
-                resolve&&resolve(str);
-            }
-        })
-    });
-}
-
-/** 写入每一章 */
-exports.textLocalTxt = async (text,fileName) => {
-    fs.appendFile(fileName,text,'utf8',(error) => {
-        if(error){
-            console.log('===error===',error);
-            return false;
+        try {
+            let url = `http://longzu5.co${urlNumber}`;
+            console.log('===url===',url);
+            const res = await superagent.get(`${url}`);
+            let html = res&&res.text;
+            let $ = await cheerio.load(html, {decodeEntities: false}); //用cheerio解析页面数据
+            let str = '';
+            let header = $('h2').text();
+            str += (header + '\r\n\n');
+            $('div:nth-of-type(1) > p:nth-of-type(n+2)').each((index, element) => {
+                let $text = $(element).text();
+                // if ($text == '坑边闲话：' || $text == '（坑边闲话：') {
+                if ($text.search('坑边闲话：') != -1 || $text.search('PS：') != -1) {
+                    return false;
+                }
+                if ($text.trim() && $text.trim().length > 0) { //不需要空行
+                    str += ($text + '\r\n\n');
+                }
+            });
+            resolve&&resolve(str);
+        } catch (err) {
+            reject&&reject(err);
         }
-        console.log('===写入完成===');
     });
 }
