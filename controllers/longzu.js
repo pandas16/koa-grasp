@@ -1,10 +1,11 @@
 /**
- * 用户模块的函数
+ * 《龙族》函数
  */
 'use strict';
 
 const cheerio = require('cheerio');
 const superagent = require('superagent');
+require('superagent-charset')(superagent); // install charset
 const utils = require('../utils/utils');
 
 exports.fetchNovel = async (ctx,next) => {

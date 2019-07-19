@@ -28,6 +28,22 @@ const Tools = {
             });
         });
     },
+    isDataValid: function (data = '') {
+        if (data != null) {
+            data = data.toString();
+            if (data != '' && data != 'undefined' && data != 'null') {
+                return true;
+            }
+        }
+        return false;
+    },
+    delay: async (time) => {
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                resolve();
+            }, time);
+        });
+    },
 }
 
 module.exports = Tools;
