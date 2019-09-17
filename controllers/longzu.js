@@ -49,9 +49,9 @@ exports.fetchNovel = async (ctx,next) => {
 
 exports.fetchCatalog = async (ctx,next) => {
     const query = ctx.request.query;
-    let start = query&&query.start; // || '第170章 但为君故(74)';
+    let start = query&&query.start || '第178章 但为君故(82)'; 
     let superagentRes = null,urls = [];
-    let fileName = `龙族_170.txt`;
+    let fileName = `全职法师.txt`;
     try {
         superagentRes = await superagent.get(`http://longzu5.co`);
         let html = superagentRes&&superagentRes.text;
@@ -101,7 +101,7 @@ exports.fetchCatalog = async (ctx,next) => {
 exports.fetchChapter = async (urlNumber) => {
     return new Promise(async (resolve, reject) => {
         try {
-            let url = `http://longzu5.co${urlNumber}`;
+            let url = `${urlNumber}`;
             console.log('===url===',url);
             const res = await superagent.get(`${url}`);
             let html = res&&res.text;

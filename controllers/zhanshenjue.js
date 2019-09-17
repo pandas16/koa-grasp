@@ -1,5 +1,5 @@
 /**
- * 《全职法师》函数
+ * 《斩神绝》函数
  */
 'use strict';
 
@@ -8,13 +8,11 @@ const superagent = require('superagent');
 require('superagent-charset')(superagent); // install charset
 const utils = require('../utils/utils');
 
-// 斩决 https://www.11kt.cn/read/131820/index.html
-// 全职法师 https://www.booktxt.net/0_595/
-const catalogUrl = 'https://www.booktxt.net/0_595/'; 
+const catalogUrl = 'https://www.gebiqu.com/biquge_42368'; 
 
 exports.fetchCatalog = async (ctx,next) => {
     const query = ctx.request.query;
-    let start = query&&query.start || '第3060章 合影';
+    let start = query&&query.start || '第1756章 申屠弑天';
     let superagentRes = null;
     let urls = [];
     let fileName = `190917_001.txt`;
@@ -24,7 +22,7 @@ exports.fetchCatalog = async (ctx,next) => {
         let html = superagentRes&&superagentRes.text;
         let $ = await cheerio.load(html, {decodeEntities: false}); //用cheerio解析页面数据
     
-        $($('dd:nth-of-type(n+10) a').toArray().reverse()).each((index, element) => {
+        $($('dd:nth-of-type(n+9) a').toArray().reverse()).each((index, element) => {
             let $text = $(element).text();
             let $url = $(element).attr('href');
             urls.unshift($url);
@@ -38,20 +36,6 @@ exports.fetchCatalog = async (ctx,next) => {
             ctx.body = {errInfo: '抓取章节失败！'};
         }
 
-        // Promise.all(urls&&urls.map(async (item)=>{
-        //     return this.fetchChapter(`${item}`);
-        // })).then((res)=>{
-        //     utils.writeFile(fileName,res);
-        //     ctx.body = {
-        //         tip: `抓取成功！`,
-        //         count: urls.length,
-        //     }
-        // }).catch((err)=>{
-        //     ctx.body = {
-        //         errTip: `抓取失败`,
-        //         errMsg: err,
-        //     }
-        // });
         for (let index = 0; index < urls.length; index++) {
             try {
                 await utils.delay(250);
@@ -79,7 +63,7 @@ exports.fetchCatalog = async (ctx,next) => {
 /** 抓取每一章 */
 exports.fetchChapter = async (chapterUrl) => {
     return new Promise(async (resolve, reject) => {
-        let url = `${catalogUrl}${chapterUrl}`;
+        let url = `https://www.gebiqu.com/${chapterUrl}`;
         let str = '';
         superagent.get(`${url}`).buffer(true).charset('gbk').then((res) => {
             console.log('===url===',url);
