@@ -10,25 +10,46 @@ const utils = require('../utils/utils');
 
 // 斩决 https://www.11kt.cn/read/131820/index.html
 // 全职法师 https://www.booktxt.net/0_595/
-const catalogUrl = 'https://www.booktxt.net/0_595/'; 
+// 我师兄实在太稳健了 https://www.booktxt.net/18_18099/
+// 圣墟 https://www.booktxt.net/2_2219/
+// 诡秘 https://www.booktxt.net/5_5552/
+const catalogUrl = 'https://www.booktxt.net/5_5552/'; 
+
+const Params = {
+    catalogUrl: `https://www.booktxt.net/5_5552/`,
+    startName: `第一章 欢迎`,
+    endName: `第八十七章 牺牲者`,
+    fileName: `诡秘_第七部 倒吊人.txt`
+}
 
 exports.fetchCatalog = async (ctx,next) => {
-    const query = ctx.request.query;
-    let start = query&&query.start || '第3060章 合影';
     let superagentRes = null;
     let urls = [];
-    let fileName = `190917_001.txt`;
+    let isHasEndFlag = Params.endName&&Params.endName.length>0;
+    let initIndex = -1;
+    let isLoading = false;
 
+    if (isLoading) {
+        ctx.body = {
+            errInfo: '正在进行中……',
+        }
+    }
     try {
-        superagentRes = await superagent.get(`${catalogUrl}`).buffer(true).charset('gbk');
+        isLoading=true;
+        superagentRes = await superagent.get(`${Params.catalogUrl}`).buffer(true).charset('gbk');
         let html = superagentRes&&superagentRes.text;
         let $ = await cheerio.load(html, {decodeEntities: false}); //用cheerio解析页面数据
     
         $($('dd:nth-of-type(n+10) a').toArray().reverse()).each((index, element) => {
             let $text = $(element).text();
             let $url = $(element).attr('href');
-            urls.unshift($url);
-            if ($text == start) {
+            if (isHasEndFlag&&($text==Params.endName)) {
+                initIndex = index;
+            }
+            if (((isHasEndFlag&&initIndex>-1)||!isHasEndFlag)&&/第.*章.*/.test($text)) {
+                urls.unshift($url);
+            }
+            if ($text == Params.startName) {
                 return false;
             }
         });
@@ -54,10 +75,10 @@ exports.fetchCatalog = async (ctx,next) => {
         // });
         for (let index = 0; index < urls.length; index++) {
             try {
-                await utils.delay(250);
+                await utils.delay(500);
                 let resStr = await this.fetchChapter(`${urls[index]}`);
                 if (resStr&&resStr.length>0) {
-                    await utils.writeFile(fileName,resStr);
+                    await utils.writeFile(Params.fileName,resStr);
                 }else {
                     ctx.body = {
                         errInfo2: `${url}抓取失败`,
@@ -69,7 +90,9 @@ exports.fetchCatalog = async (ctx,next) => {
                 }
             }
         }
+        isLoading = false;
     } catch (error) {
+        isLoading = false;
         ctx.body = {
             errInfo: error,
         }
@@ -82,17 +105,21 @@ exports.fetchChapter = async (chapterUrl) => {
         let url = `${catalogUrl}${chapterUrl}`;
         let str = '';
         superagent.get(`${url}`).buffer(true).charset('gbk').then((res) => {
-            console.log('===url===',url);
             let html = res&&res.text;
             let $ = cheerio.load(html, {decodeEntities: false}); //用cheerio解析页面数据
-            let header = $('h1').text();
-            str += (header + '\r\n\n');
+            let header = $('h1').text().trim();
+            header = header.replace(/（.*?）/,'');
+            str += ('\r\n' + header + '\r\n');
             $('div#content').contents().each((index, element) => {
-                let $text = $(element).text();
-                if ($text.trim() && $text.trim().length > 0) { //不需要空行
-                    str += ($text + '\r\n\n');
+                let $text = $(element).text().trim();
+                if ($text.indexOf('PS：')!=-1||$text.indexOf('booktxt')!=-1) {
+                    return false;
+                }
+                if ($text&&$text.length > 0) { //不需要空行
+                    str += (`    ` + $text + '\r\n');
                 }
             });
+            console.log('===抓取结束===',header);
             resolve&&resolve(str);
         }).catch((err)=>{
             reject&&reject(err)
