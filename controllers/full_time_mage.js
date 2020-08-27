@@ -9,17 +9,16 @@ require('superagent-charset')(superagent); // install charset
 const utils = require('../utils/utils');
 
 // 斩决 https://www.11kt.cn/read/131820/index.html
-// 全职法师 https://www.booktxt.net/0_595/
 // 我师兄实在太稳健了 https://www.booktxt.net/18_18099/
 // 圣墟 https://www.booktxt.net/2_2219/
 // 诡秘 https://www.booktxt.net/5_5552/
-const catalogUrl = 'https://www.booktxt.net/5_5552/'; 
+// 烂柯棋缘 https://www.booktxt.net/16_16202/
 
 const Params = {
-    catalogUrl: `https://www.booktxt.net/5_5552/`,
-    startName: `第一章 欢迎`,
-    endName: `第八十七章 牺牲者`,
-    fileName: `诡秘_第七部 倒吊人.txt`
+    catalogUrl: `https://www.booktxt.net/18_18099/`,
+    startName: `第六百三十章 灵珠子转世的主要原因555`,
+    endName: ``,
+    fileName: `师兄_620-630.txt`
 }
 
 exports.fetchCatalog = async (ctx,next) => {
@@ -40,7 +39,7 @@ exports.fetchCatalog = async (ctx,next) => {
         let html = superagentRes&&superagentRes.text;
         let $ = await cheerio.load(html, {decodeEntities: false}); //用cheerio解析页面数据
     
-        $($('dd:nth-of-type(n+10) a').toArray().reverse()).each((index, element) => {
+        $($('dd:nth-of-type(n+7) a').toArray().reverse()).each((index, element) => {
             let $text = $(element).text();
             let $url = $(element).attr('href');
             if (isHasEndFlag&&($text==Params.endName)) {
@@ -75,7 +74,7 @@ exports.fetchCatalog = async (ctx,next) => {
         // });
         for (let index = 0; index < urls.length; index++) {
             try {
-                await utils.delay(500);
+                await utils.delay(100);
                 let resStr = await this.fetchChapter(`${urls[index]}`);
                 if (resStr&&resStr.length>0) {
                     await utils.writeFile(Params.fileName,resStr);
@@ -102,17 +101,18 @@ exports.fetchCatalog = async (ctx,next) => {
 /** 抓取每一章 */
 exports.fetchChapter = async (chapterUrl) => {
     return new Promise(async (resolve, reject) => {
-        let url = `${catalogUrl}${chapterUrl}`;
+        let url = `${Params.catalogUrl}${chapterUrl}`;
         let str = '';
         superagent.get(`${url}`).buffer(true).charset('gbk').then((res) => {
             let html = res&&res.text;
             let $ = cheerio.load(html, {decodeEntities: false}); //用cheerio解析页面数据
             let header = $('h1').text().trim();
             header = header.replace(/（.*?）/,'');
+            header = header.replace(/【.*?】/,''); 
             str += ('\r\n' + header + '\r\n');
             $('div#content').contents().each((index, element) => {
                 let $text = $(element).text().trim();
-                if ($text.indexOf('PS：')!=-1||$text.indexOf('booktxt')!=-1) {
+                if ($text.indexOf('PS：')!=-1||$text.indexOf('PS:')!=-1||$text.indexOf('booktxt')!=-1) {
                     return false;
                 }
                 if ($text&&$text.length > 0) { //不需要空行

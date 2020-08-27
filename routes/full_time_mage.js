@@ -6,7 +6,7 @@ const Fashi = require('../controllers/full_time_mage');
 
 const routers = router
     // 获取章节
-    .get('/fetchCatalog',Fashi.fetchCatalog) 
+    .get('/start',Fashi.fetchCatalog) 
     .get('/fetchChapter',Fashi.fetchChapter) 
 
 module.exports = routers;
