@@ -6,7 +6,7 @@
 // const router = new Router();
 // const superagent = require('superagent');
 
-const Koa = require('koa2');
+const Koa = require('koa');
 const app = new Koa();
 
 var router = require('./routes/index');
