@@ -41,50 +41,56 @@ exports.fetchCatalog = async (ctx,next) => {
         let html = result&&result.text;
         let $ = await cheerio.load(html, {decodeEntities: false}); //用cheerio解析页面数据
         
-        // 验证DOM结构
-        let dllength = $('dl').children().length; //#list dl
-        if (dllength < 20) {
-            ctx.body = {
-                errInfo2: '请调整DOM结构!',
-            }
-        }
-    
-        $($('dd:nth-of-type(n+7) a').toArray().reverse()).each((index, element) => {
-            let $text = $(element).text();
-            let $url = $(element).attr('href');
-            if (isHasEndFlag&&($text.includes(Params.endName))) {
-                initIndex = index;
-            }
-            if (((isHasEndFlag&&initIndex>-1)||!isHasEndFlag)&&/第.*章.*/.test($text)) {
-                urls.unshift($url);
-            }
-            if ($text.includes(Params.startName)) {
-                return false;
-            }
+        // $($('a').toArray().reverse()).each((index, element)=>{
+        //     let text = $(element).text();
+        //     console.log('===text===',text);
+        //     let url = $(element).attr('href');
+        //     console.log('===url===',url);
+        // }); //#list dl
+
+        let b = $('a').parents().each((index, element)=>{
+            // let a = $(element).html();
+            // console.log('===a===',a);
+            let b = $(element).siblings().length;
+            console.log('===b===',b);
         });
 
-        console.log('获取数组完成:',JSON.stringify(urls),'数组长度:',urls.length);
-        if (!utils.isDataValid(urls) || urls.length < 1) {
-            ctx.body = {errInfo: '抓取章节失败！'};
-        }
+        // $($('dd:nth-of-type(n+7) a').toArray().reverse()).each((index, element) => {
+        //     let $text = $(element).text();
+        //     let $url = $(element).attr('href');
+        //     if (isHasEndFlag&&($text.includes(Params.endName))) {
+        //         initIndex = index;
+        //     }
+        //     if (((isHasEndFlag&&initIndex>-1)||!isHasEndFlag)&&/第.*章.*/.test($text)) {
+        //         urls.unshift($url);
+        //     }
+        //     if ($text.includes(Params.startName)) {
+        //         return false;
+        //     }
+        // });
 
-        for (let index = 0; index < urls.length; index++) {
-            try {
-                await utils.delay(250);
-                let resStr = await this.fetchChapter(`${urls[index]}`);
-                if (resStr&&resStr.length>0) {
-                    await utils.writeFile(Params.fileName,resStr);
-                }else {
-                    ctx.body = {
-                        errInfo2: `${url}抓取失败`,
-                    }
-                }
-            } catch (error) {
-                ctx.body = {
-                    errInfo3: error,
-                }
-            }
-        }
+        // console.log('获取数组完成:',JSON.stringify(urls),'数组长度:',urls.length);
+        // if (!utils.isDataValid(urls) || urls.length < 1) {
+        //     ctx.body = {errInfo: '抓取章节失败！'};
+        // }
+
+        // for (let index = 0; index < urls.length; index++) {
+        //     try {
+        //         await utils.delay(250);
+        //         let resStr = await this.fetchChapter(`${urls[index]}`);
+        //         if (resStr&&resStr.length>0) {
+        //             await utils.writeFile(Params.fileName,resStr);
+        //         }else {
+        //             ctx.body = {
+        //                 errInfo2: `${url}抓取失败`,
+        //             }
+        //         }
+        //     } catch (error) {
+        //         ctx.body = {
+        //             errInfo3: error,
+        //         }
+        //     }
+        // }
         isLoading = false;
     } catch (error) {
         isLoading = false;
