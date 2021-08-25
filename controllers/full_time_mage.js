@@ -16,7 +16,7 @@ const utils = require('../utils/utils');
 // 烂柯棋缘 https://www.ddyueshu.com/16_16202/
 
 const Params = {
-    catalogUrl: `https://www.899zw.com/files/article/html/126/126891/`,
+    catalogUrl: `https://www.ddyueshu.com/18_18099/`,
     startName: `第六百三十章`,
     endName: ``,
     fileName: `师兄_620-630.txt`
@@ -38,11 +38,13 @@ exports.fetchCatalog = async (ctx,next) => {
 
         // 20210809 注意：当网站的域名发生更换时，会出现superagent: double callback bug.
         const result = await superagent.get(Params.catalogUrl).buffer(true)//.charset('gbk');  
-        console.log('===result===',result);
-        // let html = result&&result.text;
-        // let $ = await cheerio.load(html, {decodeEntities: false}); //用cheerio解析页面数据
+        // console.log('===result===',result);
+        let html = result&&result.text;
+        let $ = await cheerio.load(html, {decodeEntities: false}); //用cheerio解析页面数据
+        let charset = this.getWebsiteCharset($);
+        console.log('===charset===',charset);
 
-        // let catalogNodeName = this.findCatalogNodeName($);
+        //let catalogNodeName = this.findCatalogNodeName($);
         
         // $(`${catalogNodeName} a`).each((index, element) => {
         //     let $text = $(element).text();
@@ -132,6 +134,14 @@ exports.findCatalogNodeName = ($) => {
     return nodeName;
 }
 
-exports.findDefaultStartIndex = ($, nodeName) => {
-
+/** 获取网站的字符集 */
+exports.getWebsiteCharset = ($) => {
+    let charsetOfMeta = $('meta[charset]').attr('charset');
+    if (utils.isDataValid(charsetOfMeta)) return charsetOfMeta;
+    let charsetOfHE = $('meta[http-equiv]').attr('content');
+    if (utils.isDataValid(charsetOfHE)) {
+        let charset = charsetOfHE.split("charset=")[1];
+        if (utils.isDataValid(charset)) return charset;
+    }
+    return 'utf-8';
 }
