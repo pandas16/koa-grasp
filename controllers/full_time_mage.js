@@ -16,7 +16,7 @@ const utils = require('../utils/utils');
 // 烂柯棋缘 https://www.ddyueshu.com/16_16202/
 
 const Params = {
-    catalogUrl: `https://www.ddyueshu.com/18_18099/`,
+    catalogUrl: `https://www.899zw.com/files/article/html/126/126891/`,
     startName: `第六百三十章`,
     endName: ``,
     fileName: `师兄_620-630.txt`
@@ -37,39 +37,29 @@ exports.fetchCatalog = async (ctx,next) => {
         isLoading=true;
 
         // 20210809 注意：当网站的域名发生更换时，会出现superagent: double callback bug.
-        const result = await superagent.get(Params.catalogUrl).buffer(true).charset('gbk');  
-        let html = result&&result.text;
-        let $ = await cheerio.load(html, {decodeEntities: false}); //用cheerio解析页面数据
+        const result = await superagent.get(Params.catalogUrl).buffer(true)//.charset('gbk');  
+        console.log('===result===',result);
+        // let html = result&&result.text;
+        // let $ = await cheerio.load(html, {decodeEntities: false}); //用cheerio解析页面数据
+
+        // let catalogNodeName = this.findCatalogNodeName($);
         
-        // $($('a').toArray().reverse()).each((index, element)=>{
-        //     let text = $(element).text();
-        //     console.log('===text===',text);
-        //     let url = $(element).attr('href');
-        //     console.log('===url===',url);
-        // }); //#list dl
-
-        let b = $('a').parents().each((index, element)=>{
-            // let a = $(element).html();
-            // console.log('===a===',a);
-            let b = $(element).siblings().length;
-            console.log('===b===',b);
-        });
-
-        // $($('dd:nth-of-type(n+7) a').toArray().reverse()).each((index, element) => {
+        // $(`${catalogNodeName} a`).each((index, element) => {
         //     let $text = $(element).text();
         //     let $url = $(element).attr('href');
         //     if (isHasEndFlag&&($text.includes(Params.endName))) {
         //         initIndex = index;
         //     }
         //     if (((isHasEndFlag&&initIndex>-1)||!isHasEndFlag)&&/第.*章.*/.test($text)) {
+        //         console.log('===$text===',$text);
         //         urls.unshift($url);
         //     }
         //     if ($text.includes(Params.startName)) {
         //         return false;
         //     }
         // });
-
         // console.log('获取数组完成:',JSON.stringify(urls),'数组长度:',urls.length);
+
         // if (!utils.isDataValid(urls) || urls.length < 1) {
         //     ctx.body = {errInfo: '抓取章节失败！'};
         // }
@@ -127,4 +117,21 @@ exports.fetchChapter = async (chapterUrl) => {
             reject&&reject(err)
         });
     });
+}
+
+/** 查找目录所在的节点的名称 */
+exports.findCatalogNodeName = ($) => {
+    let nodeName = '';
+    $('a').parents().each((index, element)=>{ // 查询出所有a标签的父节点并遍历
+        let nodeCount = $(element).siblings().length; // a标签父级元素的同级节点数量
+        if (nodeCount > 15) {
+            nodeName =  $(element).prop("tagName");
+            return false; //用false结束循环
+        }
+    });
+    return nodeName;
+}
+
+exports.findDefaultStartIndex = ($, nodeName) => {
+
 }
