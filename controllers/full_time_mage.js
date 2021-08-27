@@ -6,6 +6,7 @@
 const cheerio = require('cheerio');
 const charset = require('superagent-charset');
 const superagent = charset(require('superagent'));
+const iconv = require('iconv-lite');
 
 const utils = require('../utils/utils');
 
@@ -16,7 +17,7 @@ const utils = require('../utils/utils');
 // 烂柯棋缘 https://www.ddyueshu.com/16_16202/
 
 const Params = {
-    catalogUrl: `https://www.ddyueshu.com/18_18099/`,
+    catalogUrl: `https://www.gebiqu.com/biquge_42368`,
     startName: `第六百三十章`,
     endName: ``,
     fileName: `师兄_620-630.txt`
@@ -35,32 +36,30 @@ exports.fetchCatalog = async (ctx,next) => {
     }
     try {
         isLoading=true;
-
         // 20210809 注意：当网站的域名发生更换时，会出现superagent: double callback bug.
-        const result = await superagent.get(Params.catalogUrl).buffer(true)//.charset('gbk');  
-        // console.log('===result===',result);
+        const result = await superagent.get(Params.catalogUrl).buffer(true).charset('binary');
         let html = result&&result.text;
-        let $ = await cheerio.load(html, {decodeEntities: false}); //用cheerio解析页面数据
-        let charset = this.getWebsiteCharset($);
-        console.log('===charset===',charset);
-
-        //let catalogNodeName = this.findCatalogNodeName($);
+        var buf = Buffer.from(html, 'binary'); //转换成buffer
+        let charset = (buf.toString().match(/<meta.+?charset=['"]?([^"']+)/i) || []).pop() || 'utf-8'; //编码格式
+        var decodeHtml = iconv.decode(buf, charset); 
+        let $ = await cheerio.load(decodeHtml, {decodeEntities: false}); //用cheerio解析页面数据
+        let catalogNodeName = this.findCatalogNodeName($); //目录结构的标签名称 例如:li,dd
         
-        // $(`${catalogNodeName} a`).each((index, element) => {
-        //     let $text = $(element).text();
-        //     let $url = $(element).attr('href');
-        //     if (isHasEndFlag&&($text.includes(Params.endName))) {
-        //         initIndex = index;
-        //     }
-        //     if (((isHasEndFlag&&initIndex>-1)||!isHasEndFlag)&&/第.*章.*/.test($text)) {
-        //         console.log('===$text===',$text);
-        //         urls.unshift($url);
-        //     }
-        //     if ($text.includes(Params.startName)) {
-        //         return false;
-        //     }
-        // });
-        // console.log('获取数组完成:',JSON.stringify(urls),'数组长度:',urls.length);
+        $(`${catalogNodeName} a`).each((index, element) => {
+            let $text = $(element).text();
+            let $url = $(element).attr('href');
+            if (isHasEndFlag&&($text.includes(Params.endName))) {
+                initIndex = index;
+            }
+            if (((isHasEndFlag&&initIndex>-1)||!isHasEndFlag)&&/第.*章.*/.test($text)) {
+                console.log('===$text===',$text);
+                urls.unshift($url);
+            }
+            if ($text.includes(Params.startName)) {
+                return false;
+            }
+        });
+        console.log('获取数组完成:',JSON.stringify(urls),'数组长度:',urls.length);
 
         // if (!utils.isDataValid(urls) || urls.length < 1) {
         //     ctx.body = {errInfo: '抓取章节失败！'};
