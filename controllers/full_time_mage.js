@@ -17,10 +17,10 @@ const utils = require('../utils/utils');
 // 烂柯棋缘 https://www.ddyueshu.com/16_16202/
 
 const Params = {
-    catalogUrl: `https://www.ddyueshu.com/18_18099/`,
-    startName: `第七百六十一章`,
+    catalogUrl: `https://www.aixswx.com/xs/256/256432/`,
+    startName: ``,
     endName: ``,
-    fileName: `师兄_620-630.txt`
+    fileName: `测试1.txt`
 }
 
 exports.fetchCatalog = async (ctx,next) => {
@@ -69,13 +69,13 @@ exports.fetchCatalog = async (ctx,next) => {
             try {
                 await utils.delay(250);
                 let resStr = await this.fetchChapter(`${urls[index]}`);
-                // if (resStr&&resStr.length>0) {
-                //     await utils.writeFile(Params.fileName,resStr);
-                // }else {
-                //     ctx.body = {
-                //         errInfo2: `${url}抓取失败`,
-                //     }
-                // }
+                if (resStr&&resStr.length>0) {
+                    await utils.writeFile(Params.fileName,resStr);
+                }else {
+                    ctx.body = {
+                        errInfo2: `${url}抓取失败`,
+                    }
+                }
             } catch (error) {
                 ctx.body = {
                     errInfo3: error,
@@ -102,43 +102,25 @@ exports.fetchChapter = async (chapterUrl) => {
             let charset = (buf.toString().match(/<meta.+?charset=['"]?([^"']+)/i) || []).pop() || 'utf-8'; //编码格式
             var decodeHtml = iconv.decode(buf, charset);
             let $ = cheerio.load(decodeHtml, {decodeEntities: false}); //用cheerio解析页面数据
-            // let header = $('h1').text().trim();
-            // header = header.replace(/（.*?）/,'');
-            // header = header.replace(/【.*?】/,''); 
-            // str += ('\r\n' + header + '\r\n');
             
-            let length = $('br').length;
-            console.log('===length===',length);
-            let count = $('br').parents().length;
-            console.log('===count===',count);
-            $('br').parents().each((index, element) => {
-                // let el = $(element).prop("tagName");
-                // console.log('===el===',el);
-                // let el = $(element).attr
-                // console.log('===el===',el);
-                // let name = element.name;
-                // let type = element.type;
-                // let attributes = element.attributes;
-                // let node_type = element.nodeType;
-                // let akb = element.attribs;
-                // console.log('===name===',name);
-                // console.log('===type===',type);
-                // console.log('===attributes===',attributes);
-                // console.log('===node_type===',node_type);
-                // console.log('===akb===',akb);
-                let attr = $(element).attr();
-                console.log('===attr===',attr);
+            let contentInfo = this.findContentNodeId($);
+            if (contentInfo == null || Object.keys(contentInfo).length <= 0) {
+                reject&&reject('正文解构失败,请联系管理员!');
+            }
+            let header = $('h1').text().trim();
+            header = header.replace(/（.*?）/,'');
+            header = header.replace(/【.*?】/,''); 
+            str += ('\r\n' + header + '\r\n');
+            $(`${contentInfo.nodeName}#${contentInfo.id}`).contents().each((index, element) => {
+                let $text = $(element).text().trim();
+                if ($text.indexOf('PS：')!=-1||$text.indexOf('PS:')!=-1||$text.indexOf('booktxt')!=-1) {
+                    return false;
+                }
+                if ($text&&$text.length > 0) { //不需要空行
+                    str += (`    ` + $text + '\r\n');
+                }
             });
-            // $('div#content').contents().each((index, element) => {
-            //     let $text = $(element).text().trim();
-            //     if ($text.indexOf('PS：')!=-1||$text.indexOf('PS:')!=-1||$text.indexOf('booktxt')!=-1) {
-            //         return false;
-            //     }
-            //     if ($text&&$text.length > 0) { //不需要空行
-            //         str += (`    ` + $text + '\r\n');
-            //     }
-            // });
-            // console.log('===抓取结束===',header);
+            console.log('===抓取结束===',header);
             resolve&&resolve(str);
         }).catch((err)=>{
             reject&&reject(err)
@@ -151,7 +133,7 @@ exports.findCatalogNodeName = ($) => {
     let nodeName = '';
     $('a').parents().each((index, element)=>{ // 查询出所有a标签的父节点并遍历
         let nodeCount = $(element).siblings().length; // a标签父级元素的同级节点数量
-        if (nodeCount > 15) {
+        if (nodeCount > 50) {
             nodeName =  $(element).prop("tagName");
             return false; //用false结束循环
         }
@@ -159,6 +141,17 @@ exports.findCatalogNodeName = ($) => {
     return nodeName;
 }
 
-// exports.findContentNodeId = ($) => {
-//     $('br').
-// }
+/** 查找正文的节点信息 */
+exports.findContentNodeId = ($) => {
+    let contentInfo = {};
+    $('br').each((index, element) => {
+        let brCount = $(element).siblings().length;
+        let attr = $(element).parent().attr();
+        if ('id' in attr && brCount > 10) {
+            contentInfo.id = $(element).parent().attr('id');
+            contentInfo.nodeName = $(element).parent().prop("tagName");
+            return false; //用false结束循环
+        }
+    });
+    return contentInfo;
+}
