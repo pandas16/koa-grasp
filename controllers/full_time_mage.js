@@ -17,10 +17,10 @@ const utils = require('../utils/utils');
 // 烂柯棋缘 https://www.ddyueshu.com/16_16202/
 
 const Params = {
-    catalogUrl: `https://www.aixswx.com/xs/256/256432/`,
+    catalogUrl: `https://www.lewen123.net/6/6994/`, 
     startName: ``,
     endName: ``,
-    fileName: `测试1.txt`
+    fileName: `无人监视.txt`
 }
 
 exports.fetchCatalog = async (ctx,next) => {
@@ -43,17 +43,22 @@ exports.fetchCatalog = async (ctx,next) => {
         let charset = (buf.toString().match(/<meta.+?charset=['"]?([^"']+)/i) || []).pop() || 'utf-8'; //编码格式
         var decodeHtml = iconv.decode(buf, charset);
         let $ = await cheerio.load(decodeHtml, { decodeEntities: false }); //用cheerio解析页面数据
-        let catalogNodeName = this.findCatalogNodeName($); //目录结构的标签名称 例如:li,dd
+        let catalogNode = this.findCatalogNode($); //目录结构的标志
+        let node = JSON.parse(JSON.stringify(catalogNode));
 
-        $(`${catalogNodeName} a`).each((index, element) => {
+        let selectorStr = this.getSelectorStr(node); // 选择器文本
+        if (!utils.isDataValid(selectorStr)) 
+            ctx.body = { errInfo: '选择器索取失败' };
+        
+        $(`${selectorStr}`).find('a').each((index, element) => {
             let $text = $(element).text();
             let $url = $(element).attr('href');
             if (isHasStartFlag && ($text.includes(Params.startName))) {
                 initIndex = index;
             }
-            if (((isHasStartFlag && initIndex > -1) || !isHasStartFlag) && /第.*章.*/.test($text)) { //((isHasStartFlag && initIndex > -1) || !isHasStartFlag) && /第.*章.*/.test($text)
-                // console.log('===$text===', $text);
-                urls.unshift($url);
+            if ((isHasStartFlag && initIndex > -1) || !isHasStartFlag) { //((isHasStartFlag && initIndex > -1) || !isHasStartFlag) && /第.*章.*/.test($text)
+                let chapter = {url: $url, text: $text};
+                urls.push(chapter);
             }
             if (utils.isDataValid(Params.endName)&&$text.includes(Params.endName)) {
                 return false;
@@ -61,14 +66,13 @@ exports.fetchCatalog = async (ctx,next) => {
         });
         console.log('获取数组完成:', JSON.stringify(urls), '数组长度:', urls.length);
 
-        if (!utils.isDataValid(urls) || urls.length < 1) {
+        if (!utils.isDataValid(urls) || urls.length < 1) 
             ctx.body = {errInfo: '抓取章节失败！'};
-        }
 
         for (let index = 0; index < urls.length; index++) {
             try {
                 await utils.delay(250);
-                let resStr = await this.fetchChapter(`${urls[index]}`);
+                let resStr = await this.fetchChapter(urls[index]);
                 if (resStr&&resStr.length>0) {
                     await utils.writeFile(Params.fileName,resStr);
                 }else {
@@ -92,9 +96,10 @@ exports.fetchCatalog = async (ctx,next) => {
 }
 
 /** 抓取每一章 */
-exports.fetchChapter = async (chapterUrl) => {
+exports.fetchChapter = async (chapter = {}) => {
     return new Promise(async (resolve, reject) => {
-        let url = `${Params.catalogUrl}${chapterUrl}`;
+        let url = utils.mixinRepeatKeywords(Params.catalogUrl, chapter.url);
+        console.log('===url===',url);
         let str = '';
         superagent.get(`${url}`).buffer(true).charset('binary').then((res) => {
             let html = res&&res.text;
@@ -103,15 +108,22 @@ exports.fetchChapter = async (chapterUrl) => {
             var decodeHtml = iconv.decode(buf, charset);
             let $ = cheerio.load(decodeHtml, {decodeEntities: false}); //用cheerio解析页面数据
             
-            let contentInfo = this.findContentNodeId($);
+            let contentInfo = this.findContentNodeId($, 'br');
             if (contentInfo == null || Object.keys(contentInfo).length <= 0) {
+                contentInfo = this.findContentNodeId($, 'p');
+            }
+            // console.log('===contentInfo===',JSON.stringify(contentInfo));
+            let selectorStr = this.getSelectorStr(contentInfo); // 选择器文本
+            // console.log('===selectorStr===',selectorStr);
+            
+            if (!utils.isDataValid(selectorStr)) {
                 reject&&reject('正文解构失败,请联系管理员!');
             }
-            let header = $('h1').text().trim();
+            let header = chapter&&chapter.text.trim();
             header = header.replace(/（.*?）/,'');
             header = header.replace(/【.*?】/,''); 
             str += ('\r\n' + header + '\r\n');
-            $(`${contentInfo.nodeName}#${contentInfo.id}`).contents().each((index, element) => {
+            $(`${selectorStr}`).contents().each((index, element) => {
                 let $text = $(element).text().trim();
                 if ($text.indexOf('PS：')!=-1||$text.indexOf('PS:')!=-1||$text.indexOf('booktxt')!=-1) {
                     return false;
@@ -129,27 +141,43 @@ exports.fetchChapter = async (chapterUrl) => {
 }
 
 /** 查找目录所在的节点的名称 */
-exports.findCatalogNodeName = ($) => {
-    let nodeName = '';
-    $('a').parents().each((index, element)=>{ // 查询出所有a标签的父节点并遍历
-        let nodeCount = $(element).siblings().length; // a标签父级元素的同级节点数量
-        if (nodeCount > 50) {
-            nodeName =  $(element).prop("tagName");
+exports.getSelectorStr = (node = {}) => {
+    let selectorStr = '';
+    if ('id' in node) {
+        selectorStr = `#${node.id}`;
+    }else if ('class' in node) {
+        let classArr = node.class.split(' ');
+        selectorStr = classArr.map((item)=>`.${item}`).join(', ');
+    }
+    return selectorStr;
+}
+
+/** 查找目录所在的节点的名称 */
+exports.findCatalogNode = ($) => {
+    let node = {};
+    $('a').length > 0 && $('a').each((index, element)=>{ // 查询出所有a标签的父节点并遍历
+        let containerNode = $(element).parent();
+        let nodeCount = containerNode.siblings().length; // a标签父级元素的同级节点数量
+        if (nodeCount > 20) {
+            node = containerNode.parent().attr();
+            if (!('id' in node) && !('class' in node)) 
+                node = containerNode.parent().parent().attr();
             return false; //用false结束循环
         }
     });
-    return nodeName;
+    return node;
 }
 
 /** 查找正文的节点信息 */
-exports.findContentNodeId = ($) => {
+exports.findContentNodeId = ($, tag) => {
     let contentInfo = {};
-    $('br').each((index, element) => {
+    $(tag).length > 0 && $(tag).each((index, element) => {
         let brCount = $(element).siblings().length;
-        let attr = $(element).parent().attr();
-        if ('id' in attr && brCount > 10) {
-            contentInfo.id = $(element).parent().attr('id');
-            contentInfo.nodeName = $(element).parent().prop("tagName");
+        if (brCount > 10) {
+            contentInfo = $(element).parent().attr();
+            if (!('id' in contentInfo) && !('class' in contentInfo)) {
+                contentInfo = $(element).parent().parent().attr();
+            }
             return false; //用false结束循环
         }
     });

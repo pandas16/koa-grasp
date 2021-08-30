@@ -44,6 +44,28 @@ const Tools = {
             }, time);
         });
     },
+    mixinRepeatKeywords(k1, k2) {
+        if (k1 === k2 || !k2 || !k1) return false;
+    
+        const len1 = k1.length;
+        const len2 = k2.length;
+        let index = 0;
+    
+        for (let i = 1; i < len1; i++) {
+            let sub1 = k1.substring(len1 - i, len1); // k1的后几位
+            let sub2 = k2.substring(0, i); // k2的前几位
+    
+            // 记录匹配上的最后一个位置
+            if (sub1 === sub2) {
+                index = i;
+            }
+        }
+    
+        // 拼接为一个字符串
+        if (index) {
+            return k1 + k2.substring(index, len2);
+        }
+    }
 }
 
 module.exports = Tools;
