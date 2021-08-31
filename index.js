@@ -6,7 +6,8 @@
 // const router = new Router();
 // const superagent = require('superagent');
 
-const Koa = require('koa2');
+const Koa = require('koa');
+const bodyParser = require('koa-bodyparser');
 const app = new Koa();
 
 var router = require('./routes/index');
@@ -16,8 +17,13 @@ router.get('/', function (ctx, next) {
 });
 
 app
+  .use(bodyParser())
   .use(router.routes())
   .use(router.allowedMethods());
+
+app.use(async ctx => {
+  ctx.body = ctx.request.body;
+});
 
 app.listen(3000, () => {
     // 注册全局未捕获异常处理器

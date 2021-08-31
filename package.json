@@ -4,10 +4,12 @@
   "description": "测试koa爬虫",
   "main": "index.js",
   "dependencies": {
-    "cheerio": "^1.0.0-rc.3",
-    "koa-router": "^7.4.0",
-    "koa2": "^2.0.0-alpha.7",
-    "superagent": "^5.1.0",
+    "cheerio": "^1.0.0-rc.10",
+    "iconv-lite": "^0.6.3",
+    "koa": "^2.13.1",
+    "koa-bodyparser": "^4.3.0",
+    "koa-router": "^10.0.0",
+    "superagent": "^6.1.0",
     "superagent-charset": "^1.2.0"
   },
   "devDependencies": {},
